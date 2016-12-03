@@ -2,6 +2,31 @@
 
 import time
 import serial
+import threading
+
+h_last = ""
+m_last = ""
+sec_last = ""
+
+def MX_updateTime():
+    threading.Timer(1.0, MX_updateTime).start()
+    global h_last
+    global m_last
+    global sec_last
+    h,m,sec = time.localtime()[3:6]
+    print("Time is: {0}:{1}:{2}".format(digitString(h),digitString(m),digitString(sec)))
+    if (h_last != h):
+        MX_write(s, MX_5, h/10)
+        MX_write(s, MX_4, h%10)
+    if (m_last != m):
+        MX_write(s, MX_3, m/10)
+        MX_write(s, MX_2, m%10)
+    if (sec_last != sec):
+        MX_write(s, MX_1, sec/10)
+        MX_write(s, MX_0, sec%10)
+    h_last = h
+    m_last = m
+    sec_last = sec
 
 # Turn a digit into a String of at least two characters
 def digitString(number):
@@ -49,6 +74,8 @@ def MX_write(serialPort, address, data):
 
 # Main method
 if __name__ == "__main__":
+    global s
+
     # Write addresses
     MX_0            = "0x01" # Digit 0
     MX_1            = "0x02" # Digit 1
@@ -64,9 +91,6 @@ if __name__ == "__main__":
     MX_POWER        = "0x0C" # On/off
     MX_DISPLAY_TEST = "0x0F" # Turn on all LEDs
 
-    SLEEP_TIME = 0.5 # Sleep for one second
-    h,m,sec = getTimeString()
-    print("Time is: {0}:{1}:{2}".format(h,m,sec))
     COM_N = input("COM port number: ")
     s = serial.Serial("COM"+COM_N, 9600, timeout=1)
     s.flushOutput()
@@ -75,14 +99,4 @@ if __name__ == "__main__":
     MX_write(s, MX_DECODE_MODE, hex2dec("0xFF")) # Decode all
 
     # Update the time on the display
-    while 1:
-        h,m,sec = time.localtime()[3:6]
-        print("Time is: {0}:{1}:{2}".format(digitString(h),digitString(m),digitString(sec)))
-        MX_write(s, MX_5, h/10)
-        MX_write(s, MX_4, h%10)
-        MX_write(s, MX_3, m/10)
-        MX_write(s, MX_2, m%10)
-        MX_write(s, MX_1, sec/10)
-        MX_write(s, MX_0, sec%10)
-        time.sleep(SLEEP_TIME)
-    s.close()
+    MX_updateTime()
