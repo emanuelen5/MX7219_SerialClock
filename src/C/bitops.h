@@ -1,5 +1,3 @@
-
-
 #ifndef _BITOPS_H_
 #define _BITOPS_H_ 1
 
@@ -13,3 +11,5 @@
 #define mask_set_bits(BYTE, clear, set)     BYTE = (BYTE & ~clear) | (clear & set)  // 
 //#define loop_until_bit_is_set(BYTE, bit)	while (!(BYTE & BV(bit)))				// Runs a loop until bit is set
 //#define loop_until_bit_is_clear(BYTE, bit)	while (BYTE & BV(bit))					// Runs a loop until bit is clear
+
+#endif /*_BITOPS_H_*/
