@@ -2,7 +2,11 @@
 
 import time
 import serial
+import serial.tools.list_ports
 import threading
+
+comports_l = list(serial.tools.list_ports.comports())
+comports_l.sort(key=lambda tup: tup[0]) # Sort comports after name
 
 # Write addresses
 MX_0            = "0x01" # Digit 0
@@ -24,7 +28,11 @@ m_last = ""
 sec_last = ""
 displayBuffer = []
 
-COM_N = input("COM port number: ")
+print("Currently open COM ports:")
+for i, val in enumerate(comports_l):
+    print("  - {0}: {1}".format(val[0], val[1]))
+
+COM_N = input("Open COM port number: ")
 # Timeout must be smaller than the thread interrupt value to avoid interrupt overflow
 s = serial.Serial("COM"+COM_N, 9600, timeout=0.1)
 s.flushOutput()
