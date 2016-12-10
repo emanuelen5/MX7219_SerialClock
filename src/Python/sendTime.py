@@ -30,10 +30,11 @@ MX_DISPLAY_TEST = "0x0F" # Turn on all LEDs
 
 displayBuffer = []
 
-print("Currently open COM ports:")
+print("Currently available COM ports:")
 COM_ports = list(serial.tools.list_ports.comports())
-COM_ports.sort(key=lambda tup: tup[0]) # Sort comports after name
+COM_ports.sort(key=lambda tup: tup[0]) # Sort COM ports after name
 COM_ports_names = []
+# List all available COM ports
 for i, tup in enumerate(COM_ports):
     name = tup[0]
     description = tup[1]
@@ -60,10 +61,15 @@ try:
     # Timeout must be smaller than the thread interrupt value to avoid interrupt overflow
     s = serial.Serial(COM, baudRate, timeout=0.1)
 except serial.serialutil.SerialException as e:
-    print("Could not open " + COM)
-    print("Exception reported: '" + e + "'")
-    exit(-1)
+    serialExceptionHandler(e, "Could not open " + COM)
 s.flushOutput()
+
+# Handles serial exceptions
+def serialExceptionHandler(e, err_str=""):
+    if (err_str):
+        print(err_str)
+    print("Exception reported: '" + str(e) + "'")
+    exit(-1)
 
 # Updates the display with a list of values
 def MX_updateBuffer(digits):
@@ -137,21 +143,28 @@ def print_no_newline(string):
 
 # Write to serial port and accept data in return
 def serialWrite(serialPort, data):
-    serialPort.write([data])
-    print("Sent: " + str(data))
-    print_no_newline("Response: \"")
+    try:
+        serialPort.write([data])
+    except serial.serialutil.SerialException as e:
+        serialExceptionHandler(e, "Could not write to the port. Perhaps it has been disconnected?")
+    # print("Sent: " + str(data))
+    # print_no_newline("Response: \"")
     resp = ""
     tmp = "\0" # Used for dealing with if there is no response
     while (not resp.endswith("\n") and tmp != ""):
-        tmp = serialPort.read().decode('UTF-8') # Convert to string without escape characters
-        print_no_newline(tmp) # Print last character
+        try:
+            tmp = serialPort.read().decode('UTF-8') # Convert to string without escape characters
+        except serial.serialutil.SerialException as e:
+            serialExceptionHandler(e, "Could not read from the port. Perhaps it has been disconnected?")
+        # print_no_newline(tmp) # Print last character
         resp += tmp
-    print("\"")
+    # print("\"")
     if (tmp == ""):
         print("No response received within time limit - skipping parse of response!")
 
 # Write data to a specific address on the MAX7219 via serial port
 def MX_write(serialPort, address, data):
+    print("Setting " + str(address) + " to " + str(data))
     serialWrite(serialPort, hex2dec(address));
     serialWrite(serialPort, int(data));
     serialWrite(serialPort, ord('\r')); # Convert character to integer
