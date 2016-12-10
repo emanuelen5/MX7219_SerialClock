@@ -1,12 +1,17 @@
 # Program which sends the current time to a serially connected MAX7219 8-segment display
 
+# For determining current time
 import time
+# For communicating with COM ports
 import serial
+# For determining open COM ports
 import serial.tools.list_ports
+# For idling between writes
 import threading
+# For matching COM port name
+import re
 
-comports_l = list(serial.tools.list_ports.comports())
-comports_l.sort(key=lambda tup: tup[0]) # Sort comports after name
+baudRate = 9600
 
 # Write addresses
 MX_0            = "0x01" # Digit 0
@@ -23,18 +28,41 @@ MX_SCAN_LIMIT   = "0x0B" # Set number of digits to display (affects the intensit
 MX_POWER        = "0x0C" # On/off
 MX_DISPLAY_TEST = "0x0F" # Turn on all LEDs
 
-h_last = ""
-m_last = ""
-sec_last = ""
 displayBuffer = []
 
 print("Currently open COM ports:")
-for i, val in enumerate(comports_l):
-    print("  - {0}: {1}".format(val[0], val[1]))
+COM_ports = list(serial.tools.list_ports.comports())
+COM_ports.sort(key=lambda tup: tup[0]) # Sort comports after name
+COM_ports_names = []
+for i, tup in enumerate(COM_ports):
+    name = tup[0]
+    description = tup[1]
+    COM_ports_names.append(name)
+    print(" - {}: {}".format(name, description))
 
-COM_N = input("Open COM port number: ")
-# Timeout must be smaller than the thread interrupt value to avoid interrupt overflow
-s = serial.Serial("COM"+COM_N, 9600, timeout=0.1)
+COM_name = input("Enter the name of the COM port: ")
+
+# Get the specified serial port
+COM = ""
+for n in COM_ports_names:
+    match = re.search(COM_name, n)
+    if (match):
+        COM = n
+        print("Matched: " + COM)
+        break
+# Make sure there has been a match
+if (COM == ""):
+    quit("The string " + COM_name + " did not match any ports, exiting")
+    exit(-1)
+
+try:
+    print("Opening " + COM + " at " + str(baudRate) + " baud/s")
+    # Timeout must be smaller than the thread interrupt value to avoid interrupt overflow
+    s = serial.Serial(COM, baudRate, timeout=0.1)
+except serial.serialutil.SerialException as e:
+    print("Could not open " + COM)
+    print("Exception reported: '" + e + "'")
+    exit(-1)
 s.flushOutput()
 
 # Updates the display with a list of values
@@ -63,7 +91,10 @@ def MX_updateBuffer(digits):
         i -= 1;
     displayBuffer = displayBuffer[:len(digits)] # Cut off extra entries (if buffer has shortened)
 
+# Updates the time of the display
+MX_updateTime_lock = threading.Lock()
 def MX_updateTime():
+    MX_updateTime_lock.acquire()
     threading.Timer(1.0, MX_updateTime).start()
     digits = [0]*6
     h,m,sec = time.localtime()[3:6]
@@ -75,6 +106,7 @@ def MX_updateTime():
     digits[4] = int(sec/10)
     digits[5] = int(sec%10)
     MX_updateBuffer(digits)
+    MX_updateTime_lock.release()
 
 # Turn a digit into a String of at least two characters
 def digitString(number):
