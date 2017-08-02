@@ -10,8 +10,14 @@ import serial.tools.list_ports
 import threading
 # For matching COM port name
 import re
+import sys
 
 baudRate = 9600
+
+# Must flush upon write for some systems to make threads output prints before thread completion
+def print(s):
+    sys.stdout.write(s + '\n')
+    sys.stdout.flush()
 
 # Write addresses
 MX_0            = "0x01" # Digit 0
@@ -102,15 +108,15 @@ MX_updateTime_lock = threading.Lock()
 def MX_updateTime():
     MX_updateTime_lock.acquire()
     threading.Timer(1.0, MX_updateTime).start()
-    digits = [0]*6
+    digits = []
     h,m,sec = time.localtime()[3:6]
     print("Time is: {0}:{1}:{2}".format(digitString(h),digitString(m),digitString(sec)))
-    digits[0] = int(h/10)
-    digits[1] = int(h%10)
-    digits[2] = int(m/10)
-    digits[3] = int(m%10)
-    digits[4] = int(sec/10)
-    digits[5] = int(sec%10)
+    digits.append(int(h/10))
+    digits.append(int(h%10))
+    digits.append(int(m/10))
+    digits.append(int(m%10))
+    digits.append(int(sec/10))
+    digits.append(int(sec%10))
     MX_updateBuffer(digits)
     MX_updateTime_lock.release()
 
@@ -175,6 +181,7 @@ if __name__ == "__main__":
     MX_write(s, MX_SCAN_LIMIT, 5) # Only display 6 digits
     MX_write(s, MX_DECODE_MODE, hex2dec("0xFF")) # Decode all to numbers
     MX_write(s, MX_DISPLAY_TEST, 0)
+    MX_write(s, MX_INTENSITY, hex2dec("0x0F"))
 
     # Update the time on the display
     MX_updateTime()
